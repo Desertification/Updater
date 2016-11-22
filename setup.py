@@ -1,64 +1,106 @@
+# coding=utf-8
+"""
+Setup file to freeze the application to a single exe
+
+Run the build process by entering 'setup.py py2exe' or
+'python setup.py py2exe' in a console prompt.
+"""
 import os
+import shutil
 import sys
 import traceback
 from distutils.core import setup
+from warnings import warn
+
 import py2exe
-import shutil
+
+from bin.convenience import find_substrings_in_list
+from news import __version__, __description__, __author__, __name___
 
 # noinspection PyStatementEffect
 py2exe  # prevent cleanup
 
 # paths required for freeze fixes
-PYTHON_INSTALLATION = os.path.dirname(sys.executable)
-PYTHON_DDLS = os.path.join(PYTHON_INSTALLATION, "/DLLs")
-PYTHON_PYSIDE = os.path.join(PYTHON_INSTALLATION, "/Lib/site-packages/PySide")
+PYTHON_DDLS = find_substrings_in_list("DLLs", sys.path)[0]  # location of python DLLs directory
+PYTHON_PYSIDE = os.path.join(find_substrings_in_list("site-packages", sys.path)[0], "PySide")  # location of pyside
+
+# paths to fixed files
+msvcp_dll = "freezefix/msvcp90.dll"
+init_py = "freezefix/__init__.py"
 
 
-def apply_fixes():
+def apply_dll_fix():
+    """
+    Moves the msvcp90.dll from freezefix to the python DLLs folder
+    """
     if os.path.exists(PYTHON_DDLS):
         try:
-            shutil.copy("freezefix/msvcp90.dll", PYTHON_DDLS)  # fix distutils not able to find msvcp90.DLL
+            shutil.copy(msvcp_dll, PYTHON_DDLS)  # fix distutils not able to find msvcp90.DLL
+            return
         except:
             traceback.print_exc()
-            pass
+    warn("Could not apply dll fix, freeze could fail")
 
+
+def apply_pyside_fix():
+    """
+    Moves the __init__.py from freezefix to the directory of the pyside module
+    The new file fixes an error when running from a single exe
+    """
     if os.path.exists(PYTHON_PYSIDE):
         try:
-            shutil.copy("freezefix/__init__.py", PYTHON_DDLS)  # fix pyside crash when bundled to single file
+            shutil.copy(init_py, PYTHON_PYSIDE)  # fix pyside crash when bundled to single file
+            return
         except:
             traceback.print_exc()
-            pass
+    warn("Could not apply pyside fix, the execuatable will probably not work")
 
 
 def clean():
+    """
+    Cleans the dist directory
+    """
     try:
         shutil.rmtree("dist")
-    except:
-        traceback.print_exc()
-        return False
-
+    except Exception as e:
+        if e.args[0] == 3:  # path not found
+            return True
+        elif e.args[0] == 5:
+            warn("Could not clean dist folder: Directory or file is in use")
+            return False
+        else:
+            traceback.print_exc()
+            return False
     return True
 
-apply_fixes()
 
-if clean():
-    setup(
-        # The first three parameters are not required, if at least a
-        # 'version' is given, then a versioninfo resource is built from
-        # them and added to the executables.
-        version="0.0.0",
-        description="news",
-        name="news",
-        # targets to build
-        console=["news.py"],
+if __name__ == '__main__':
+    apply_dll_fix()
+    apply_pyside_fix()
 
-        options={
-            "py2exe": {
-                "bundle_files": 1,
-                # "compressed": 1,
-            }
+    if clean():
+        sys.stdout.flush()
+        setup(
+            # The first three parameters are not required, if at least a
+            # 'version' is given, then a versioninfo resource is built from
+            # them and added to the executables.
+            version=__version__,
+            description=__description__,
+            name=__name___,
+            author=__author__,
 
-        },
-        zipfile=None,
-        requires=['PySide']
-    )
+            # targets to build
+            console=[{
+                "script": "news.py",
+                "icon_resources": [(0, "resources/icon.ico")],
+                "dest_base": __name___  # resulting name of file
+            }],
+
+            options={
+                "py2exe": {
+                    "bundle_files": 1,
+                }
+            },
+            zipfile=None,
+            requires=['PySide', 'py2exe']
+        )

@@ -1,13 +1,15 @@
-import sys
-from PySide.QtGui import QApplication
-from PySide.QtGui import QMainWindow
 import os.path
+import sys
 import time
 import urllib
 
-__version__ = "0.0.9"
+from PySide.QtGui import QApplication
+from PySide.QtGui import QMainWindow
+
+__version__ = "0.1.0"
 __author__ = "maxim"
 __description__ = "Minecraft mod list updater"
+__name___ = "MMLU"
 
 if __name__ == "__main__":
     addedfiles = []
