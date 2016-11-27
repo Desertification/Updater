@@ -3,8 +3,11 @@
 Stores convenience functions
 """
 import os
+import re
 import socket
 import sys
+
+from ipaddr import IPv6Address, AddressValueError
 
 
 def find_substrings_in_list(substring, list):
@@ -55,3 +58,52 @@ def is_valid_ipv4(ip):
 		return True
 	except socket.error:
 		return False
+
+
+def is_valid_ipv6(ip):
+	"""
+	Tests if an ip address string is a valid ipv6 address
+
+	:param ip: ipv6 address string
+	:type ip: basestring
+	:return: valid or not
+	:rtype: bool
+	"""
+	try:
+		IPv6Address(ip)
+		return True
+	except AddressValueError:
+		return False
+
+
+def is_valid_hostname(hostname):
+	"""
+	http://stackoverflow.com/a/33214423
+	validates the fqdn hostname
+
+	:param hostname:
+	:return:
+	"""
+	if hostname[-1] == ".":
+		# strip exactly one dot from the right, if present
+		hostname = hostname[:-1]
+	if len(hostname) > 253:
+		return False
+	# must be not all-numeric, so that it can't be confused with an ip-address
+	if re.match(r"[\d.]+$", hostname):
+		return False
+
+	allowed = re.compile("(?!-)[A-Z\d-]{1,63}(?<!-)$", re.IGNORECASE)
+	return all(allowed.match(x) for x in hostname.split("."))
+
+
+def is_valid_port(port):
+	"""
+	Test if the port is in a valid range
+
+	:param port: port number
+	:type port: int
+	:return: valid or not
+	:rtype: bool
+	"""
+	return 0 <= port < 65536
